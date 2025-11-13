@@ -41,16 +41,16 @@ Single NestJS microservice at repository root:
 
 ### Domain Foundation
 
-- [ ] T006 [P] Create base DomainError class in `src/domain/errors/base.error.ts`
-- [ ] T007 [P] Create IUseCase generic interface in `src/domain/contracts/use-case.interface.ts`
+- [x] T006 [P] Create base DomainError class in `src/domain/errors/base.error.ts`
+- [x] T007 [P] Create IUseCase generic interface in `src/domain/contracts/use-case.interface.ts`
 
 ### Value Objects (Used by Multiple Stories)
 
-- [ ] T008 [P] Create Currency value object in `src/domain/value-objects/currency.ts` with MXN support
-- [ ] T009 [P] Create Amount value object in `src/domain/value-objects/amount.ts` with minor units (centavos) validation
-- [ ] T010 [P] Create CountryCode value object in `src/domain/value-objects/country-code.ts` with ISO-3166-1 validation
-- [ ] T011 [P] Create PaymentReference value object in `src/domain/value-objects/payment-reference.ts` with generation logic
-- [ ] T012 [P] Create IdempotencyKey value object in `src/domain/value-objects/idempotency-key.ts` with UUID v4 validation
+- [x] T008 [P] Create Currency value object in `src/domain/value-objects/currency.ts` with MXN support
+- [x] T009 [P] Create Amount value object in `src/domain/value-objects/amount.ts` with minor units (centavos) validation
+- [x] T010 [P] Create CountryCode value object in `src/domain/value-objects/country-code.ts` with ISO-3166-1 validation
+- [x] T011 [P] Create PaymentReference value object in `src/domain/value-objects/payment-reference.ts` with generation logic
+- [x] T012 [P] Create IdempotencyKey value object in `src/domain/value-objects/idempotency-key.ts` with UUID v4 validation
 
 ### Value Object Tests
 
@@ -62,28 +62,28 @@ Single NestJS microservice at repository root:
 
 ### Infrastructure Foundation
 
-- [ ] T018 [P] Create IHttpClient interface in `src/domain/contracts/http-client.interface.ts`
-- [ ] T019 [P] Implement FetchHttpClient with retry logic in `src/infrastructure/http-client/fetch-http-client.ts` (3 retries, exponential backoff)
-- [ ] T020 [P] Create ICache interface in `src/domain/contracts/cache.interface.ts`
-- [ ] T021 [P] Implement InMemoryCacheService in `src/infrastructure/cache/in-memory-cache.service.ts` with TTL support
-- [ ] T022 [P] Create ILogger interface in `src/domain/contracts/logger.interface.ts`
-- [ ] T023 [P] Implement StructuredLogger with field masking in `src/infrastructure/logger/structured-logger.service.ts`
-- [ ] T024 [P] Create CorrelationIdService in `src/infrastructure/services/correlation-id.service.ts` with UUID v4 generation
-- [ ] T025 [P] Create NestConfigEnvironmentService in `src/infrastructure/services/nest-config-environment.service.ts`
+- [x] T018 [P] Create IHttpClient interface in `src/domain/contracts/http-client.interface.ts`
+- [x] T019 [P] Implement FetchHttpClient with retry logic in `src/infrastructure/http-client/fetch-http-client.ts` (3 retries, exponential backoff)
+- [x] T020 [P] Create ICache interface in `src/domain/contracts/cache.interface.ts`
+- [x] T021 [P] Implement InMemoryCacheService in `src/infrastructure/cache/in-memory-cache.service.ts` with TTL support
+- [x] T022 [P] Create ILogger interface in `src/domain/contracts/logger.interface.ts`
+- [x] T023 [P] Implement StructuredLogger with field masking in `src/infrastructure/logger/structured-logger.service.ts`
+- [x] T024 [P] Create CorrelationIdService in `src/infrastructure/services/correlation-id.service.ts` with UUID v4 generation
+- [x] T025 [P] Create NestConfigEnvironmentService in `src/infrastructure/services/nest-config-environment.service.ts`
 
 ### Database Foundation
 
-- [ ] T026 Create PaymentTransactionEntity (TypeORM) in `src/infrastructure/orm/payment-transaction.entity.ts`
-- [ ] T027 Create TypeORM migration for payment_transactions table in `src/infrastructure/migrations/[timestamp]-CreatePaymentTransactions.ts`
+- [x] T026 Create PaymentTransactionEntity (TypeORM) in `src/infrastructure/orm/payment-transaction.entity.ts`
+- [x] T027 Create TypeORM migration for payment_transactions table in `src/infrastructure/migrations/[timestamp]-CreatePaymentTransactions.ts`
 - [ ] T028 Create IPaymentTransactionRepository interface in `src/domain/contracts/payment-transaction-repository.interface.ts`
 - [ ] T029 Implement TypeOrmPaymentTransactionRepository in `src/infrastructure/repositories/typeorm-payment-transaction.repository.ts` with entity-domain mapping
 
 ### Domain Errors
 
-- [ ] T030 [P] Create PaymentMethodNotFoundError in `src/domain/errors/payment-method-not-found.error.ts`
-- [ ] T031 [P] Create InvalidPaymentDataError in `src/domain/errors/invalid-payment-data.error.ts`
-- [ ] T032 [P] Create DuplicatePaymentError in `src/domain/errors/duplicate-payment.error.ts`
-- [ ] T033 [P] Create PaymentProcessingError in `src/domain/errors/payment-processing.error.ts`
+- [x] T030 [P] Create PaymentMethodNotFoundError in `src/domain/errors/payment-method-not-found.error.ts`
+- [x] T031 [P] Create InvalidPaymentDataError in `src/domain/errors/invalid-payment-data.error.ts`
+- [x] T032 [P] Create DuplicatePaymentError in `src/domain/errors/duplicate-payment.error.ts`
+- [x] T033 [P] Create PaymentProcessingError in `src/domain/errors/payment-processing.error.ts`
 
 ### Domain Error Tests
 
