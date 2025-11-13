@@ -94,9 +94,11 @@ export class CreatePaymentUseCase implements ICreatePaymentUseCase {
       input.countryCode,
     );
 
-    await this.transactionRepository.save(pendingTransaction);
+    const savedTransaction =
+      await this.transactionRepository.save(pendingTransaction);
     this.logger.info('Persisted pending transaction', {
       merchantReference: input.merchantReference,
+      transactionId: savedTransaction.id,
     });
 
     try {
@@ -118,10 +120,10 @@ export class CreatePaymentUseCase implements ICreatePaymentUseCase {
 
       // Update transaction with Adyen response
       const updatedTransaction = this.updateTransactionWithResponse(
-        pendingTransaction,
+        savedTransaction,
         adyenResponse,
       );
-      await this.transactionRepository.save(updatedTransaction);
+      await this.transactionRepository.update(updatedTransaction);
 
       this.logger.info('Updated transaction with Adyen response', {
         merchantReference: input.merchantReference,
@@ -137,11 +139,13 @@ export class CreatePaymentUseCase implements ICreatePaymentUseCase {
 
       return response;
     } catch (error) {
-      // Update transaction with error state
-      const errorTransaction = pendingTransaction.withError(
+      // Update existing pending transaction with error state
+      const errorTransaction = savedTransaction.withError(
         error instanceof Error ? error.message : 'Unknown error',
       );
-      await this.transactionRepository.save(errorTransaction);
+
+      // Update the same transaction (don't save again - unique constraint on merchantReference)
+      await this.transactionRepository.update(errorTransaction);
 
       this.logger.error(
         'Payment processing failed',
