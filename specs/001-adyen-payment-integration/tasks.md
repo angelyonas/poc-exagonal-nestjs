@@ -75,8 +75,8 @@ Single NestJS microservice at repository root:
 
 - [x] T026 Create PaymentTransactionEntity (TypeORM) in `src/infrastructure/orm/payment-transaction.entity.ts`
 - [x] T027 Create TypeORM migration for payment_transactions table in `src/infrastructure/migrations/[timestamp]-CreatePaymentTransactions.ts`
-- [ ] T028 Create IPaymentTransactionRepository interface in `src/domain/contracts/payment-transaction-repository.interface.ts`
-- [ ] T029 Implement TypeOrmPaymentTransactionRepository in `src/infrastructure/repositories/typeorm-payment-transaction.repository.ts` with entity-domain mapping
+- [x] T028 Create IPaymentTransactionRepository interface in `src/domain/contracts/payment-transaction-repository.interface.ts`
+- [x] T029 Implement TypeOrmPaymentTransactionRepository in `src/infrastructure/repositories/typeorm-payment-transaction.repository.ts` with entity-domain mapping
 
 ### Domain Errors
 
