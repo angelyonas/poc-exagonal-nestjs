@@ -12,18 +12,24 @@ Integrate Adyen Advanced Flow payment processing to enable merchants to retrieve
 ## Technical Context
 
 **Language/Version**: Node.js 22.x, TypeScript 5.x  
-**Primary Dependencies**: NestJS 11, class-validator, class-transformer, Jest  
-**Storage**: PostgreSQL with TypeORM (repository pattern with entity mapping)  
+**Primary Dependencies**: 
+- NestJS 11 (web framework)
+- @adyen/api-library (official Adyen Node.js SDK - v71+)
+- class-validator, class-transformer (DTO validation)
+- TypeORM (PostgreSQL ORM)
+- Jest (testing framework)
+
+**Storage**: PostgreSQL 14+ with TypeORM (repository pattern with entity mapping)  
 **Testing**: Jest with 95% lines/statements, 90% branches/functions coverage  
 **Target Platform**: Backend microservice (single bounded context)
 **Project Type**: Single NestJS microservice following hexagonal architecture  
 **Performance Goals**: 
 - Payment method retrieval: <2s for 95% of requests, <100ms for cached requests (99%)
 - Payment processing: 100 concurrent transactions without degradation
-- API timeouts: 30 seconds with retry logic (3 attempts, exponential backoff)
+- API timeouts: Handled by @adyen/api-library (configurable via Client options)
 **Constraints**: 
 - PCI DSS compliance (SAQ-A): encrypted card data only
-- Adyen API version 71 required
+- Adyen API version 71+ (managed by @adyen/api-library)
 - MXN base currency with minor units (centavos)
 - Idempotency: 24-hour cache for duplicate prevention
 - Logging: masked sensitive fields with correlation IDs
@@ -37,10 +43,10 @@ Integrate Adyen Advanced Flow payment processing to enable merchants to retrieve
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 ### ✅ Hexagonal Architecture (NON-NEGOTIABLE)
-- **Domain Layer**: Payment entities (PaymentMethod, PaymentTransaction, PaymentAction, PaymentDetails) with `_entity` schema pattern, value objects for validation, interfaces (I-prefix), DTOs (I-prefix + DTO-suffix), domain errors
+- **Domain Layer**: Payment entities (PaymentMethod, PaymentTransaction, PaymentAction, PaymentDetails) with `_entity` schema pattern, value objects for validation, interfaces (I-prefix including IAdyenClient), DTOs (I-prefix + DTO-suffix), domain errors
 - **Application Layer**: Use cases implementing `IUseCase<TInput, TOutput>` (GetPaymentMethodsUseCase, CreatePaymentUseCase, ProcessPaymentDetailsUseCase) with max 3 dependencies, orchestration only
-- **Infrastructure Layer**: Adyen API client, repositories, controllers, API DTOs with class-validator decorators, HTTP client wrapper, environment configuration service
-- **Status**: ✅ PASS - No forbidden imports, strict layer boundaries maintained
+- **Infrastructure Layer**: AdyenClientService (wraps @adyen/api-library), repositories, controllers, API DTOs with class-validator decorators, environment configuration service
+- **Status**: ✅ PASS - No forbidden imports, strict layer boundaries maintained, Adyen SDK only in infrastructure
 
 ### ✅ Single Microservice Pattern
 - Single bounded context: Payment processing

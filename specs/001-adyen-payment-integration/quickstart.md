@@ -1,7 +1,8 @@
 # Quick Start Guide: Adyen Advanced Flow Payment Integration
 
 **Feature**: Adyen Advanced Flow Payment Integration  
-**Last Updated**: 2025-11-13
+**Last Updated**: 2025-11-13  
+**Adyen Integration**: Uses official `@adyen/api-library` (v71+)
 
 ## Prerequisites
 
@@ -11,6 +12,7 @@
 - **Docker** (optional): For running PostgreSQL in container
 - **Adyen Test Account**: Required for API credentials
 - **Adyen Client-Side Encryption**: Required for handling card data (if testing card payments)
+- **@adyen/api-library**: Official Adyen Node.js SDK (installed automatically)
 
 ## 1. Environment Setup
 
@@ -55,11 +57,11 @@ psql -U postgres -c "CREATE DATABASE payments_db;"
 Create `.env` file in project root:
 
 ```bash
-# Adyen Configuration
+# Adyen Configuration (Required for @adyen/api-library)
 ADYEN_API_KEY=your_adyen_api_key_here
 ADYEN_MERCHANT_ACCOUNT=YourMerchantAccount
-ADYEN_ENVIRONMENT=TEST  # TEST or LIVE
-ADYEN_API_VERSION=71
+ADYEN_ENVIRONMENT=TEST  # TEST or LIVE (maps to EnvironmentEnum in @adyen/api-library)
+ADYEN_API_VERSION=71    # Optional: Library uses latest version by default
 
 # Application Configuration
 NODE_ENV=development
@@ -67,9 +69,9 @@ PORT=3000
 API_PREFIX=api
 
 # Timeouts
-ADYEN_TIMEOUT_MS=30000
-PAYMENT_METHOD_CACHE_TTL_MS=300000  # 5 minutes
-IDEMPOTENCY_CACHE_TTL_MS=86400000   # 24 hours
+ADYEN_TIMEOUT_MS=30000               # Connection timeout (handled by @adyen/api-library)
+PAYMENT_METHOD_CACHE_TTL_MS=300000   # 5 minutes
+IDEMPOTENCY_CACHE_TTL_MS=86400000    # 24 hours
 
 # Database (PostgreSQL with TypeORM)
 DATABASE_HOST=localhost
@@ -453,10 +455,12 @@ uuidgen  # macOS/Linux
 src/
 ├── domain/
 │   ├── contracts/
+│   │   ├── adyen-client.interface.ts                    # Adyen API client contract
 │   │   ├── payment-method-repository.interface.ts
 │   │   ├── payment-transaction-repository.interface.ts
 │   │   └── dtos/
-│   │       ├── payment-method-filters.dto.ts
+│   │       ├── get-payment-methods.dto.ts               # Domain DTO for payment methods
+│   │       ├── payment-method-response.dto.ts
 │   │       ├── create-payment.dto.ts
 │   │       └── payment-details.dto.ts
 │   ├── entities/
@@ -477,38 +481,103 @@ src/
 │       └── payment-processing.error.ts
 ├── application/
 │   ├── use-cases/
-│   │   ├── get-payment-methods.use-case.ts
+│   │   ├── get-payment-methods.use-case.ts              # Uses @Injectable decorator
 │   │   ├── create-payment.use-case.ts
 │   │   └── submit-payment-details.use-case.ts
 │   └── config/
-│       └── tokens.ts
+│       └── tokens.ts                                    # DI tokens (Symbol-based)
 └── infrastructure/
     ├── controllers/
-    │   └── payment.controller.ts
+    │   └── payment.controller.ts                        # GET /payment-methods endpoint
     ├── repositories/
-    │   ├── adyen-payment-method.repository.ts
-    │   └── in-memory-payment-transaction.repository.ts
+    │   ├── adyen-payment-method.repository.ts           # Uses AdyenClientService
+    │   └── typeorm-payment-transaction.repository.ts    # PostgreSQL via TypeORM
     ├── external-services/
-    │   └── adyen-api.service.ts
+    │   └── adyen-client.service.ts                      # ⭐ Uses @adyen/api-library
     ├── dto/
-    │   ├── payment-method-filters.dto.ts
+    │   ├── get-payment-methods.dto.ts                   # API DTO with validators
+    │   ├── payment-method-response.dto.ts
     │   ├── create-payment.dto.ts
     │   └── payment-details.dto.ts
+    ├── orm/
+    │   └── payment-transaction.entity.ts                # TypeORM entity
+    ├── migrations/
+    │   └── [timestamp]-CreatePaymentTransactions.ts
     ├── cache/
     │   └── in-memory-cache.service.ts
-    ├── http-client/
-    │   └── fetch-http-client.ts
-    └── logger/
-        └── structured-logger.service.ts
+    ├── logger/
+    │   └── structured-logger.service.ts
+    └── app.module.ts                                    # NestJS DI configuration
 ```
+
+**Key Integration Points:**
+- ⭐ **AdyenClientService**: Uses `@adyen/api-library` Client and CheckoutAPI
+- **Repository Pattern**: AdyenPaymentMethodRepository wraps Adyen client with caching
+- **Dependency Injection**: Symbol-based tokens in `tokens.ts`, injected via `@Inject()`
+- **TypeORM**: PostgreSQL persistence for payment transactions
 
 ---
 
-## 8. Next Steps
+## 8. Adyen Library Integration Details
+
+### Installation
+
+The project uses the official Adyen Node.js SDK:
+
+```bash
+npm install @adyen/api-library
+```
+
+### AdyenClientService Implementation
+
+```typescript
+import { Client, CheckoutAPI, EnvironmentEnum } from '@adyen/api-library';
+
+@Injectable()
+export class AdyenClientService implements IAdyenClient {
+  private readonly client: Client;
+  private readonly checkout: CheckoutAPI;
+
+  constructor(
+    @Inject(INFRASTRUCTURE_TOKENS.LOGGER) private readonly logger: ILogger,
+    @Inject(INFRASTRUCTURE_TOKENS.ENVIRONMENT_SERVICE) private readonly env: IEnvironmentService,
+  ) {
+    // Initialize Adyen client with API key and environment
+    this.client = new Client({
+      apiKey: this.env.getAdyenApiKey(),
+      environment: this.env.getAdyenEnvironment() === 'LIVE' 
+        ? EnvironmentEnum.LIVE 
+        : EnvironmentEnum.TEST,
+    });
+    this.checkout = new CheckoutAPI(this.client);
+  }
+
+  async getPaymentMethods(request: IAdyenPaymentMethodsRequest) {
+    // Uses official SDK method
+    return await this.checkout.PaymentsApi.paymentMethods({
+      merchantAccount: request.merchantAccount,
+      countryCode: request.countryCode,
+      amount: request.amount,
+      shopperLocale: request.shopperLocale,
+    });
+  }
+}
+```
+
+**Benefits:**
+- ✅ Automatic endpoint routing and versioning
+- ✅ Built-in authentication handling
+- ✅ Type-safe request/response models
+- ✅ Official Adyen support and updates
+- ✅ Reduced boilerplate code
+
+---
+
+## 9. Next Steps
 
 After successful local testing:
 
-1. **Implement Persistence**: Replace in-memory repository with PostgreSQL/MongoDB
+1. **Implement Persistence**: PostgreSQL integration via TypeORM (✅ Already configured)
 2. **Add Webhooks**: Handle Adyen notifications for payment updates
 3. **Deploy**: Configure production environment variables
 4. **Monitoring**: Set up logging and error tracking
@@ -516,8 +585,9 @@ After successful local testing:
 
 ---
 
-## 9. Additional Resources
+## 10. Additional Resources
 
+- **@adyen/api-library Documentation**: https://github.com/Adyen/adyen-node-api-library
 - **Adyen API Explorer**: https://docs.adyen.com/api-explorer/
 - **Adyen Advanced Flow Guide**: https://docs.adyen.com/online-payments/web-drop-in/
 - **Test Cards**: https://docs.adyen.com/development-resources/testing/test-card-numbers
@@ -526,7 +596,7 @@ After successful local testing:
 
 ---
 
-## 10. Support
+## 11. Support
 
 For issues or questions:
 - Review specification: `specs/001-adyen-payment-integration/spec.md`

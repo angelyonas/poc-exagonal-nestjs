@@ -26,4 +26,26 @@ export class NestConfigEnvironmentService implements IEnvironmentService {
   isTest(): boolean {
     return this.getNodeEnv() === 'test';
   }
+
+  // Adyen Configuration
+  getAdyenApiKey(): string {
+    return this.configService.get<string>('ADYEN_API_KEY') || '';
+  }
+
+  getAdyenMerchantAccount(): string {
+    return this.configService.get<string>('ADYEN_MERCHANT_ACCOUNT') || '';
+  }
+
+  getAdyenEnvironment(): string {
+    return this.configService.get<string>('ADYEN_ENVIRONMENT') || 'TEST';
+  }
+
+  getAdyenApiVersion(): string {
+    return this.configService.get<string>('ADYEN_API_VERSION') || '71';
+  }
+
+  getAdyenTimeoutMs(): number {
+    const timeout = this.configService.get<string>('ADYEN_TIMEOUT_MS');
+    return timeout ? parseInt(timeout, 10) : 30000;
+  }
 }

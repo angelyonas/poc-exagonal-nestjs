@@ -104,12 +104,12 @@ Single NestJS microservice at repository root:
 
 ### Domain Layer - US1
 
-- [ ] T038 [P] [US1] Create PaymentMethod entity in `src/domain/entities/payment-method.ts` with _entity schema pattern
-- [ ] T039 [P] [US1] Create IPaymentMethodSchema interface in `src/domain/entities/payment-method.ts`
-- [ ] T040 [P] [US1] Create IGetPaymentMethodsDTO in `src/domain/contracts/dtos/get-payment-methods.dto.ts`
-- [ ] T041 [P] [US1] Create IPaymentMethodResponseDTO in `src/domain/contracts/dtos/payment-method-response.dto.ts`
-- [ ] T042 [P] [US1] Create IPaymentMethodRepository interface in `src/domain/contracts/payment-method-repository.interface.ts`
-- [ ] T043 [P] [US1] Create IGetPaymentMethodsUseCase interface in `src/domain/contracts/get-payment-methods-use-case.interface.ts`
+- [x] T038 [P] [US1] Create PaymentMethod entity in `src/domain/entities/payment-method.ts` with _entity schema pattern
+- [x] T039 [P] [US1] Create IPaymentMethodSchema interface in `src/domain/entities/payment-method.ts`
+- [x] T040 [P] [US1] Create IGetPaymentMethodsDTO in `src/domain/contracts/dtos/get-payment-methods.dto.ts`
+- [x] T041 [P] [US1] Create IPaymentMethodResponseDTO in `src/domain/contracts/dtos/payment-method-response.dto.ts`
+- [x] T042 [P] [US1] Create IPaymentMethodRepository interface in `src/domain/contracts/payment-method-repository.interface.ts`
+- [x] T043 [P] [US1] Create IGetPaymentMethodsUseCase interface in `src/domain/contracts/get-payment-methods-use-case.interface.ts`
 
 ### Domain Tests - US1
 
@@ -117,8 +117,8 @@ Single NestJS microservice at repository root:
 
 ### Application Layer - US1
 
-- [ ] T045 [US1] Create GetPaymentMethodsUseCase with @Injectable in `src/application/use-cases/get-payment-methods.use-case.ts` implementing IUseCase<IGetPaymentMethodsDTO, IPaymentMethodResponseDTO[]>
-- [ ] T046 [US1] Add PAYMENT_METHOD_TOKENS to `src/application/config/tokens.ts`
+- [x] T045 [US1] Create GetPaymentMethodsUseCase with @Injectable in `src/application/use-cases/get-payment-methods.use-case.ts` implementing IUseCase<IGetPaymentMethodsDTO, IPaymentMethodResponseDTO[]>
+- [x] T046 [US1] Add PAYMENT_METHOD_TOKENS to `src/application/config/tokens.ts`
 
 ### Application Tests - US1
 
@@ -126,13 +126,13 @@ Single NestJS microservice at repository root:
 
 ### Infrastructure Layer - US1
 
-- [ ] T048 [P] [US1] Create IAdyenClient interface in `src/domain/contracts/adyen-client.interface.ts` with getPaymentMethods method
-- [ ] T049 [US1] Implement AdyenClientService in `src/infrastructure/external-services/adyen-client.service.ts` (call /paymentMethods endpoint)
-- [ ] T050 [US1] Implement AdyenPaymentMethodRepository in `src/infrastructure/repositories/adyen-payment-method.repository.ts` with cache integration
-- [ ] T051 [P] [US1] Create GetPaymentMethodsDto (API DTO) in `src/infrastructure/dto/get-payment-methods.dto.ts` with class-validator decorators
-- [ ] T052 [P] [US1] Create PaymentMethodResponseDto (API DTO) in `src/infrastructure/dto/payment-method-response.dto.ts`
-- [ ] T053 [US1] Create PaymentController with GET /payment-methods endpoint in `src/infrastructure/controllers/payment.controller.ts`
-- [ ] T054 [US1] Update AppModule with US1 providers in `src/infrastructure/app.module.ts` (use Symbol tokens, useClass pattern)
+- [x] T048 [P] [US1] Create IAdyenClient interface in `src/domain/contracts/adyen-client.interface.ts` with getPaymentMethods method
+- [x] T049 [US1] Implement AdyenClientService in `src/infrastructure/external-services/adyen-client.service.ts` (call /paymentMethods endpoint)
+- [x] T050 [US1] Implement AdyenPaymentMethodRepository in `src/infrastructure/repositories/adyen-payment-method.repository.ts` with cache integration
+- [x] T051 [P] [US1] Create GetPaymentMethodsDto (API DTO) in `src/infrastructure/dto/get-payment-methods.dto.ts` with class-validator decorators
+- [x] T052 [P] [US1] Create PaymentMethodResponseDto (API DTO) in `src/infrastructure/dto/payment-method-response.dto.ts`
+- [x] T053 [US1] Create PaymentController with GET /payment-methods endpoint in `src/infrastructure/controllers/payment.controller.ts`
+- [x] T054 [US1] Update AppModule with US1 providers in `src/infrastructure/app.module.ts` (use Symbol tokens, useClass pattern)
 
 ### Infrastructure Tests - US1
 

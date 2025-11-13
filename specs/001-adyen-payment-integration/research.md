@@ -427,57 +427,93 @@ logger.info({
 
 ---
 
-### 9. HTTP Client Configuration for Adyen API
+### 9. Adyen API Client Integration
 
-**Decision**: Use native Fetch API with custom wrapper for retry, timeout, and logging
+**Decision**: Use official @adyen/api-library (Node.js SDK) instead of custom HTTP client
 
 **Rationale**:
-- Native fetch is built-in (Node.js 18+, no external dependency)
-- Wrapper provides consistent error handling across all HTTP calls
-- Enables middleware pattern for logging, retry, correlation ID injection
-- Lightweight compared to axios or other HTTP libraries
+- Official Adyen support and maintenance
+- Built-in type safety for all API endpoints
+- Automatic endpoint versioning and routing
+- Handles authentication, retries, and error responses automatically
+- Reduces boilerplate code significantly
+- Follows Adyen's recommended best practices
 
 **Alternatives Considered**:
-- Axios: Rejected - adds dependency, fetch is sufficient for API calls
-- Native fetch without wrapper: Rejected - duplicates retry/logging logic
-- Adyen Node.js SDK: Rejected - opaque implementation, harder to customize
+- Custom HTTP client with Fetch API: Rejected - requires manual endpoint management and versioning
+- Axios-based wrapper: Rejected - duplicates functionality provided by official SDK
+- Native fetch without wrapper: Rejected - no retry logic, manual error handling
 
 **Implementation Details**:
 ```typescript
-// HTTP client interface (domain layer)
-interface IHttpClient {
-  get<T>(url: string, config?: IHttpConfig): Promise<IHttpResponse<T>>;
-  post<T>(url: string, data?: unknown, config?: IHttpConfig): Promise<IHttpResponse<T>>;
+// Install official library
+npm install @adyen/api-library
+
+// Domain layer - IAdyenClient interface (contract)
+interface IAdyenClient {
+  getPaymentMethods(request: IAdyenPaymentMethodsRequest): Promise<IAdyenPaymentMethodsResponse>;
+  createPayment(request: IAdyenPaymentRequest): Promise<IAdyenPaymentResponse>;
+  submitPaymentDetails(request: IAdyenPaymentDetailsRequest): Promise<IAdyenPaymentResponse>;
 }
 
-interface IHttpConfig {
-  headers?: Record<string, string>;
-  timeout?: number;
-  retries?: number;
-}
+// Infrastructure layer - AdyenClientService (wraps @adyen/api-library)
+import { Client, CheckoutAPI, EnvironmentEnum } from '@adyen/api-library';
 
-interface IHttpResponse<T> {
-  data: T;
-  status: number;
-  headers: Headers;
-}
+export class AdyenClientService implements IAdyenClient {
+  private readonly client: Client;
+  private readonly checkout: CheckoutAPI;
 
-// Fetch wrapper implementation (infrastructure layer)
-export class FetchHttpClient implements IHttpClient {
   constructor(
-    private readonly baseURL: string,
-    private readonly logger: ILogger
-  ) {}
+    @Inject(INFRASTRUCTURE_TOKENS.LOGGER) private readonly logger: ILogger,
+    @Inject(INFRASTRUCTURE_TOKENS.ENVIRONMENT_SERVICE) private readonly env: IEnvironmentService,
+  ) {
+    // Initialize Adyen client with API key and environment
+    this.client = new Client({
+      apiKey: this.env.getAdyenApiKey(),
+      environment: this.env.getAdyenEnvironment() === 'LIVE' 
+        ? EnvironmentEnum.LIVE 
+        : EnvironmentEnum.TEST,
+    });
+    this.checkout = new CheckoutAPI(this.client);
+  }
 
-  async post<T>(
-    url: string, 
-    data?: unknown, 
-    config?: IHttpConfig
-  ): Promise<IHttpResponse<T>> {
-    const fullUrl = `${this.baseURL}${url}`;
-    const timeout = config?.timeout || 30000;
+  async getPaymentMethods(request: IAdyenPaymentMethodsRequest) {
+    // Official SDK handles endpoint routing, authentication, retries
+    const response = await this.checkout.PaymentsApi.paymentMethods({
+      merchantAccount: request.merchantAccount,
+      countryCode: request.countryCode,
+      amount: request.amount,
+      shopperLocale: request.shopperLocale,
+    });
     
-    const controller = new AbortController();
+    // Map SDK response to domain interface
+    return {
+      paymentMethods: response.paymentMethods?.map(pm => ({
+        type: pm.type || '',
+        name: pm.name || '',
+        brands: pm.brands,
+        configuration: pm.configuration,
+      })) || [],
+    };
+  }
+}
+```
+
+**Benefits**:
+- ✅ Automatic API versioning (SDK manages Checkout API v71+)
+- ✅ Type-safe request/response models from Adyen
+- ✅ Built-in retry logic and error handling
+- ✅ Reduces ~100+ lines of HTTP client wrapper code
+- ✅ Official Adyen support and updates
+- ✅ Environment handling (TEST/LIVE) via EnvironmentEnum
+
+**Configuration**:
+```bash
+# .env variables required by @adyen/api-library
+ADYEN_API_KEY=your_test_api_key
+ADYEN_MERCHANT_ACCOUNT=YourMerchantAccount
+ADYEN_ENVIRONMENT=TEST  # Maps to EnvironmentEnum.TEST or EnvironmentEnum.LIVE
+```
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
     try {
