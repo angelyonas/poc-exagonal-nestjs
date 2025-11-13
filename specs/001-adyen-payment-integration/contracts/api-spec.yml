@@ -1,0 +1,443 @@
+openapi: 3.0.3
+info:
+  title: Adyen Advanced Flow Payment Integration API
+  description: REST API for payment method retrieval and payment processing using Adyen Advanced Flow
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+
+tags:
+  - name: Payment Methods
+    description: Available payment options for shoppers
+  - name: Payments
+    description: Payment transaction management
+
+paths:
+  /payment-methods:
+    get:
+      tags:
+        - Payment Methods
+      summary: Get available payment methods
+      description: Retrieve payment methods filtered by shopper context (country, currency, device)
+      operationId: getPaymentMethods
+      parameters:
+        - name: country
+          in: query
+          description: Shopper country code (ISO-3166-1 alpha-2)
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Z]{2}$'
+            example: MX
+        - name: currency
+          in: query
+          description: Transaction currency (ISO-4217)
+          required: true
+          schema:
+            type: string
+            enum: [MXN]
+            example: MXN
+        - name: amount
+          in: query
+          description: Transaction amount in major units (pesos)
+          required: true
+          schema:
+            type: number
+            minimum: 0.01
+            maximum: 9999999.99
+            example: 1500.00
+        - name: shopperLocale
+          in: query
+          description: Shopper locale (language-country)
+          required: false
+          schema:
+            type: string
+            example: es-MX
+        - name: platform
+          in: query
+          description: Payment platform (web, ios, android)
+          required: false
+          schema:
+            type: string
+            enum: [web, ios, android]
+            example: web
+        - name: X-Correlation-ID
+          in: header
+          description: Correlation ID for request tracing
+          required: false
+          schema:
+            type: string
+            format: uuid
+            example: 550e8400-e29b-41d4-a716-446655440000
+      responses:
+        '200':
+          description: Payment methods retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodsResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payments:
+    post:
+      tags:
+        - Payments
+      summary: Create payment transaction
+      description: Initiate payment transaction with Adyen Advanced Flow
+      operationId: createPayment
+      parameters:
+        - name: X-Correlation-ID
+          in: header
+          description: Correlation ID for request tracing
+          required: false
+          schema:
+            type: string
+            format: uuid
+            example: 550e8400-e29b-41d4-a716-446655440000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '201':
+          description: Payment transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Invalid payment data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate payment request (idempotency key already used)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Payment processing error (declined, fraud detection)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payments/details:
+    post:
+      tags:
+        - Payments
+      summary: Submit additional payment details
+      description: Complete payment requiring additional action (redirect, 3DS)
+      operationId: submitPaymentDetails
+      parameters:
+        - name: X-Correlation-ID
+          in: header
+          description: Correlation ID for request tracing
+          required: false
+          schema:
+            type: string
+            format: uuid
+            example: 550e8400-e29b-41d4-a716-446655440000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentDetailsRequest'
+      responses:
+        '200':
+          description: Payment completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Invalid payment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Payment refused after authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    PaymentMethodsResponse:
+      type: object
+      required:
+        - paymentMethods
+      properties:
+        paymentMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentMethod'
+          description: List of available payment methods
+      example:
+        paymentMethods:
+          - type: scheme
+            name: Credit Card
+            brands:
+              - visa
+              - mc
+              - amex
+          - type: oxxo
+            name: OXXO
+          - type: spei
+            name: SPEI Transfer
+
+    PaymentMethod:
+      type: object
+      required:
+        - type
+        - name
+      properties:
+        type:
+          type: string
+          description: Payment method type identifier
+          example: scheme
+        name:
+          type: string
+          description: Display name for shopper
+          example: Credit Card
+        brands:
+          type: array
+          items:
+            type: string
+          description: Supported card brands (card payments only)
+          example: [visa, mc, amex]
+        configuration:
+          type: object
+          additionalProperties: true
+          description: Payment method-specific configuration
+
+    CreatePaymentRequest:
+      type: object
+      required:
+        - merchantReference
+        - idempotencyKey
+        - amount
+        - currency
+        - paymentMethodType
+      properties:
+        merchantReference:
+          type: string
+          description: Unique transaction identifier (client-generated)
+          maxLength: 100
+          example: PAY-1699564800000-A1B2C3
+        idempotencyKey:
+          type: string
+          format: uuid
+          description: UUID v4 for duplicate prevention
+          example: 550e8400-e29b-41d4-a716-446655440000
+        amount:
+          type: number
+          description: Transaction amount in major units (pesos)
+          minimum: 0.01
+          maximum: 9999999.99
+          example: 1500.00
+        currency:
+          type: string
+          enum: [MXN]
+          description: Transaction currency (ISO-4217)
+          example: MXN
+        paymentMethodType:
+          type: string
+          description: Selected payment method type
+          example: scheme
+        shopperEmail:
+          type: string
+          format: email
+          description: Shopper email for receipts
+          example: shopper@example.com
+        shopperReference:
+          type: string
+          description: Shopper identifier for future reference
+          maxLength: 100
+          example: SHOPPER-12345
+        paymentMethod:
+          type: object
+          description: Payment method details (encrypted card data, bank details, etc.)
+          additionalProperties: true
+          example:
+            type: scheme
+            encryptedCardNumber: adyenjs_...
+            encryptedExpiryMonth: adyenjs_...
+            encryptedExpiryYear: adyenjs_...
+            encryptedSecurityCode: adyenjs_...
+
+    PaymentResponse:
+      type: object
+      required:
+        - merchantReference
+        - state
+        - resultCode
+      properties:
+        merchantReference:
+          type: string
+          description: Unique transaction identifier
+          example: PAY-1699564800000-A1B2C3
+        state:
+          type: string
+          enum: [pending, authorised, refused, redirect, error]
+          description: Current transaction state
+          example: authorised
+        resultCode:
+          type: string
+          description: Adyen result code
+          example: Authorised
+        pspReference:
+          type: string
+          description: Adyen PSP reference
+          example: 8816178952380553
+        refusalReason:
+          type: string
+          description: Reason for refusal (if declined)
+          example: Insufficient funds
+        action:
+          $ref: '#/components/schemas/PaymentAction'
+          description: Additional action required (redirect, 3DS)
+        amount:
+          type: number
+          description: Transaction amount in major units (pesos)
+          example: 1500.00
+        currency:
+          type: string
+          example: MXN
+      example:
+        merchantReference: PAY-1699564800000-A1B2C3
+        state: authorised
+        resultCode: Authorised
+        pspReference: 8816178952380553
+        amount: 1500.00
+        currency: MXN
+
+    PaymentAction:
+      type: object
+      required:
+        - type
+        - paymentMethodType
+      properties:
+        type:
+          type: string
+          enum: [redirect, threeDS2, voucher, qrCode]
+          description: Action type
+          example: redirect
+        paymentMethodType:
+          type: string
+          description: Payment method requiring action
+          example: ideal
+        url:
+          type: string
+          format: uri
+          description: Redirect URL (redirect actions)
+          example: https://test.adyen.com/hpp/redirectShopper
+        method:
+          type: string
+          enum: [GET, POST]
+          description: HTTP method (redirect actions)
+          example: GET
+        data:
+          type: object
+          additionalProperties: true
+          description: Action-specific data
+      example:
+        type: redirect
+        paymentMethodType: ideal
+        url: https://test.adyen.com/hpp/redirectShopper
+        method: GET
+
+    PaymentDetailsRequest:
+      type: object
+      properties:
+        redirectResult:
+          type: string
+          description: Result from redirect flow
+          example: Ab02b4c0!BQABAgCUeRP+...
+        threeDSResult:
+          type: string
+          description: Result from 3DS authentication
+          example: eyJ0cmFuc1N0YXR1cyI6IlkifQ==
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional details by payment method
+      oneOf:
+        - required: [redirectResult]
+        - required: [threeDSResult]
+        - required: [details]
+      example:
+        redirectResult: Ab02b4c0!BQABAgCUeRP+...
+
+    ErrorResponse:
+      type: object
+      required:
+        - message
+        - statusCode
+      properties:
+        message:
+          type: string
+          description: Error message
+          example: Invalid payment data
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+        field:
+          type: string
+          description: Field causing validation error (if applicable)
+          example: amount
+        correlationId:
+          type: string
+          format: uuid
+          description: Correlation ID for tracing
+          example: 550e8400-e29b-41d4-a716-446655440000
+      example:
+        message: Amount must be positive
+        statusCode: 400
+        field: amount
+        correlationId: 550e8400-e29b-41d4-a716-446655440000
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication (if required in production)
+
+security:
+  - ApiKeyAuth: []
