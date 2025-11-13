@@ -156,13 +156,13 @@ Single NestJS microservice at repository root:
 
 ### Domain Layer - US2
 
-- [ ] T059 [P] [US2] Create PaymentTransactionState enum in `src/domain/entities/payment-transaction.ts`
-- [ ] T060 [P] [US2] Create IPaymentTransactionSchema interface in `src/domain/entities/payment-transaction.ts`
-- [ ] T061 [US2] Create PaymentTransaction entity in `src/domain/entities/payment-transaction.ts` with state transitions (withAuthorised, withRefused, withRedirect, withError)
-- [ ] T062 [P] [US2] Create PaymentAction entity in `src/domain/entities/payment-action.ts` with _entity schema pattern
-- [ ] T063 [P] [US2] Create ICreatePaymentDTO in `src/domain/contracts/dtos/create-payment.dto.ts`
-- [ ] T064 [P] [US2] Create IPaymentResponseDTO in `src/domain/contracts/dtos/payment-response.dto.ts`
-- [ ] T065 [P] [US2] Create ICreatePaymentUseCase interface in `src/domain/contracts/create-payment-use-case.interface.ts`
+- [x] T059 [P] [US2] Create PaymentTransactionState enum in `src/domain/entities/payment-transaction.ts`
+- [x] T060 [P] [US2] Create IPaymentTransactionSchema interface in `src/domain/entities/payment-transaction.ts`
+- [x] T061 [US2] Create PaymentTransaction entity in `src/domain/entities/payment-transaction.ts` with state transitions (withAuthorised, withRefused, withRedirect, withError)
+- [x] T062 [P] [US2] Create PaymentAction entity in `src/domain/entities/payment-action.ts` with _entity schema pattern
+- [x] T063 [P] [US2] Create ICreatePaymentDTO in `src/domain/contracts/dtos/create-payment.dto.ts`
+- [x] T064 [P] [US2] Create IPaymentResponseDTO in `src/domain/contracts/dtos/payment-response.dto.ts`
+- [x] T065 [P] [US2] Create ICreatePaymentUseCase interface in `src/domain/contracts/create-payment-use-case.interface.ts`
 
 ### Domain Tests - US2
 
@@ -171,10 +171,10 @@ Single NestJS microservice at repository root:
 
 ### Application Layer - US2
 
-- [ ] T068 [US2] Create CreatePaymentUseCase with @Injectable in `src/application/use-cases/create-payment.use-case.ts` implementing IUseCase<ICreatePaymentDTO, IPaymentResponseDTO>
-- [ ] T069 [US2] Add idempotency check logic in CreatePaymentUseCase (check cache before processing)
-- [ ] T070 [US2] Add persistence before API call in CreatePaymentUseCase (persist PENDING state, then update with response)
-- [ ] T071 [US2] Add CREATE_PAYMENT_TOKENS to `src/application/config/tokens.ts`
+- [x] T068 [US2] Create CreatePaymentUseCase with @Injectable in `src/application/use-cases/create-payment.use-case.ts` implementing IUseCase<ICreatePaymentDTO, IPaymentResponseDTO>
+- [x] T069 [US2] Add idempotency check logic in CreatePaymentUseCase (check cache before processing)
+- [x] T070 [US2] Add persistence before API call in CreatePaymentUseCase (persist PENDING state, then update with response)
+- [x] T071 [US2] Add CREATE_PAYMENT_TOKENS to `src/application/config/tokens.ts`
 
 ### Application Tests - US2
 
@@ -182,11 +182,11 @@ Single NestJS microservice at repository root:
 
 ### Infrastructure Layer - US2
 
-- [ ] T073 [US2] Add createPayment method to AdyenClientService in `src/infrastructure/external-services/adyen-client.service.ts` (call /payments endpoint)
-- [ ] T074 [P] [US2] Create CreatePaymentDto (API DTO) in `src/infrastructure/dto/create-payment.dto.ts` with class-validator decorators
-- [ ] T075 [P] [US2] Create PaymentResponseDto (API DTO) in `src/infrastructure/dto/payment-response.dto.ts`
-- [ ] T076 [US2] Add POST /payments endpoint to PaymentController in `src/infrastructure/controllers/payment.controller.ts` with error handling (convert domain errors to HttpException)
-- [ ] T077 [US2] Update AppModule with US2 providers in `src/infrastructure/app.module.ts`
+- [x] T073 [US2] Add createPayment method to AdyenClientService in `src/infrastructure/external-services/adyen-client.service.ts` (call /payments endpoint)
+- [x] T074 [P] [US2] Create CreatePaymentDto (API DTO) in `src/infrastructure/dto/create-payment.dto.ts` with class-validator decorators
+- [x] T075 [P] [US2] Create PaymentResponseDto (API DTO) in `src/infrastructure/dto/payment-response.dto.ts`
+- [x] T076 [US2] Add POST /payments endpoint to PaymentController in `src/infrastructure/controllers/payment.controller.ts` with error handling (convert domain errors to HttpException)
+- [x] T077 [US2] Update AppModule with US2 providers in `src/infrastructure/app.module.ts`
 
 ### Infrastructure Tests - US2
 

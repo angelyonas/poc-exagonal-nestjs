@@ -6,8 +6,10 @@ import { PaymentController } from './controllers/payment.controller';
 import { NestConfigEnvironmentService } from './services/nest-config-environment.service';
 import { GetHealthUseCase } from '../application/use-cases/get-health.use-case';
 import { GetPaymentMethodsUseCase } from '../application/use-cases/get-payment-methods.use-case';
+import { CreatePaymentUseCase } from '../application/use-cases/create-payment.use-case';
 import { AdyenClientService } from './external-services/adyen-client.service';
 import { AdyenPaymentMethodRepository } from './repositories/adyen-payment-method.repository';
+import { TypeOrmPaymentTransactionRepository } from './repositories/typeorm-payment-transaction.repository';
 import { FetchHttpClient } from './http-client/fetch-http-client';
 import { StructuredLogger } from './logger/structured-logger.service';
 import { InMemoryCacheService } from './cache/in-memory-cache.service';
@@ -15,8 +17,10 @@ import {
   HEALTH_TOKENS,
   INFRASTRUCTURE_TOKENS,
   PAYMENT_METHOD_TOKENS,
+  PAYMENT_TRANSACTION_TOKENS,
 } from '../application/config/tokens';
 import { typeOrmConfig } from './config/typeorm.config';
+import { PaymentTransactionEntity } from './orm/payment-transaction.entity';
 
 @Module({
   imports: [
@@ -25,6 +29,7 @@ import { typeOrmConfig } from './config/typeorm.config';
       envFilePath: '.env',
     }),
     TypeOrmModule.forRoot(typeOrmConfig),
+    TypeOrmModule.forFeature([PaymentTransactionEntity]),
   ],
   controllers: [HealthController, PaymentController],
   providers: [
@@ -67,6 +72,16 @@ import { typeOrmConfig } from './config/typeorm.config';
     {
       provide: PAYMENT_METHOD_TOKENS.GET_PAYMENT_METHODS_USE_CASE,
       useClass: GetPaymentMethodsUseCase,
+    },
+    // Payment Transaction Repository
+    {
+      provide: PAYMENT_TRANSACTION_TOKENS.PAYMENT_TRANSACTION_REPOSITORY,
+      useClass: TypeOrmPaymentTransactionRepository,
+    },
+    // Payment Transaction Use Cases
+    {
+      provide: PAYMENT_TRANSACTION_TOKENS.CREATE_PAYMENT_USE_CASE,
+      useClass: CreatePaymentUseCase,
     },
   ],
 })
