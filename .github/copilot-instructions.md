@@ -420,3 +420,10 @@ This project uses one Model Context Protocol (MCP) server configured in `.vscode
 ---
 
 **For detailed guidelines, reference the instruction files above in Copilot Chat.**
+
+## Active Technologies
+- Node.js 22.x, TypeScript 5.x + NestJS 11, class-validator, class-transformer, Jest (001-adyen-payment-integration)
+- PostgreSQL 14+ with TypeORM 0.3.x for data persistence (001-adyen-payment-integration)
+
+## Recent Changes
+- 001-adyen-payment-integration: Added PostgreSQL with TypeORM for payment transaction persistence
