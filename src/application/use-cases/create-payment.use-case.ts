@@ -6,7 +6,6 @@ import type { IAdyenClient } from '../../domain/contracts/adyen-client.interface
 import type { IPaymentTransactionRepository } from '../../domain/contracts/payment-transaction-repository.interface';
 import type { ICache } from '../../domain/contracts/cache.interface';
 import type { ILogger } from '../../domain/contracts/logger.interface';
-import type { IEnvironmentService } from '../../domain/contracts/environment-service.interface';
 import { PaymentTransaction } from '../../domain/entities/payment-transaction';
 import { DuplicatePaymentError } from '../../domain/errors/duplicate-payment.error';
 import { PaymentProcessingError } from '../../domain/errors/payment-processing.error';
@@ -33,43 +32,36 @@ export class CreatePaymentUseCase implements ICreatePaymentUseCase {
     private readonly cache: ICache,
     @Inject(INFRASTRUCTURE_TOKENS.LOGGER)
     private readonly logger: ILogger,
-    @Inject(INFRASTRUCTURE_TOKENS.ENVIRONMENT_SERVICE)
-    private readonly env: IEnvironmentService,
   ) {}
 
   async execute(input: ICreatePaymentDTO): Promise<IPaymentResponseDTO> {
     this.logger.info('Creating payment', {
-      merchantReference: input.merchantReference,
-      idempotencyKey: input.idempotencyKey,
-      amount: input.amount,
-      currency: input.currency,
+      reference: input.reference,
+      amount: input.amount.value,
+      currency: input.amount.currency,
     });
 
     // Check idempotency cache
-    const cachedResponse = await this.checkIdempotencyCache(
-      input.idempotencyKey,
-    );
+    const cachedResponse = await this.checkIdempotencyCache(input.reference);
     if (cachedResponse) {
       this.logger.info('Returning cached payment response', {
-        idempotencyKey: input.idempotencyKey,
+        reference: input.reference,
       });
       return cachedResponse;
     }
 
     // Check for existing transaction with same idempotency key but different data
     const existingTransaction =
-      await this.transactionRepository.findByIdempotencyKey(
-        input.idempotencyKey,
-      );
+      await this.transactionRepository.findByIdempotencyKey(input.reference);
     if (existingTransaction) {
       // Validate it's the same request
       if (
-        existingTransaction.merchantReference !== input.merchantReference ||
-        existingTransaction.amountMinorUnits !== input.amount ||
-        existingTransaction.currencyCode !== input.currency
+        existingTransaction.merchantReference !== input.reference ||
+        existingTransaction.amountMinorUnits !== input.amount.value ||
+        existingTransaction.currencyCode !== input.amount.currency
       ) {
         throw new DuplicatePaymentError(
-          input.idempotencyKey,
+          input.reference,
           'Idempotency key already used with different payment data',
         );
       }
@@ -77,18 +69,18 @@ export class CreatePaymentUseCase implements ICreatePaymentUseCase {
       // Return existing result if already processed
       if (existingTransaction.isFinalState()) {
         const response = this.entityToDTO(existingTransaction);
-        await this.cacheResponse(input.idempotencyKey, response);
+        await this.cacheResponse(input.reference, response);
         return response;
       }
     }
 
     // Create pending transaction (persist BEFORE calling Adyen)
     const pendingTransaction = PaymentTransaction.create(
-      input.merchantReference,
-      input.idempotencyKey,
-      input.amount,
-      input.currency,
-      input.paymentMethodType,
+      input.reference,
+      input.reference,
+      input.amount.value,
+      input.amount.currency,
+      input.paymentMethod.type,
       input.shopperEmail,
       input.shopperReference,
       input.countryCode,
@@ -97,21 +89,21 @@ export class CreatePaymentUseCase implements ICreatePaymentUseCase {
     const savedTransaction =
       await this.transactionRepository.save(pendingTransaction);
     this.logger.info('Persisted pending transaction', {
-      merchantReference: input.merchantReference,
+      merchantReference: input.reference,
       transactionId: savedTransaction.id,
     });
 
     try {
       // Call Adyen API
       const adyenResponse = await this.adyenClient.createPayment({
-        merchantAccount: this.env.getAdyenMerchantAccount(),
+        merchantAccount: input.merchantAccount,
         amount: {
-          value: input.amount,
-          currency: input.currency,
+          value: input.amount.value,
+          currency: input.amount.currency,
         },
-        reference: input.merchantReference,
+        reference: input.reference,
         paymentMethod: input.paymentMethod,
-        returnUrl: this.buildReturnUrl(input.merchantReference),
+        returnUrl: input.returnUrl,
         shopperEmail: input.shopperEmail,
         shopperReference: input.shopperReference,
         countryCode: input.countryCode,
@@ -126,7 +118,7 @@ export class CreatePaymentUseCase implements ICreatePaymentUseCase {
       await this.transactionRepository.update(updatedTransaction);
 
       this.logger.info('Updated transaction with Adyen response', {
-        merchantReference: input.merchantReference,
+        reference: input.reference,
         resultCode: adyenResponse.resultCode,
         pspReference: adyenResponse.pspReference,
       });
@@ -135,7 +127,7 @@ export class CreatePaymentUseCase implements ICreatePaymentUseCase {
       const response = this.entityToDTO(updatedTransaction);
 
       // Cache response
-      await this.cacheResponse(input.idempotencyKey, response);
+      await this.cacheResponse(input.reference, response);
 
       return response;
     } catch (error) {
@@ -267,18 +259,5 @@ export class CreatePaymentUseCase implements ICreatePaymentUseCase {
     }
 
     return response;
-  }
-
-  /**
-   * Build return URL for redirects
-   */
-  private buildReturnUrl(merchantReference: string): string {
-    // In production, this should be configurable
-    const baseUrl =
-      this.env.getNodeEnv() === 'production'
-        ? 'https://your-production-domain.com'
-        : 'http://localhost:3000';
-
-    return `${baseUrl}/api/payments/return?merchantReference=${merchantReference}`;
   }
 }

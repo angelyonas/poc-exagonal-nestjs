@@ -110,42 +110,37 @@ export class PaymentController {
    * POST /payments
    * Create a new payment transaction
    *
-   * @param body - Payment request data
-   * @param idempotencyKey - Idempotency key from header
+   * @param body - Payment request data (Adyen format)
+   * @param idempotencyKey - Idempotency key from header (required)
    * @returns Payment response with state and action
-   * @throws HttpException 400 - Invalid payment data
+   * @throws HttpException 400 - Invalid payment data or missing idempotency key
    * @throws HttpException 409 - Duplicate idempotency key with different data
    * @throws HttpException 500 - Payment processing error
    *
    * @example
    * POST /payments
    * X-Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
-   * Body: { merchantReference, amount, currency, paymentMethod, ... }
+   * Body: { reference, amount: { value, currency }, paymentMethod, returnUrl, merchantAccount }
    */
   @Post('payments')
   @HttpCode(HttpStatus.CREATED)
   async createPayment(
     @Body() body: CreatePaymentDto,
-    @Headers('x-idempotency-key') idempotencyKey?: string,
   ): Promise<PaymentResponseDto> {
     try {
-      // Use header idempotency key if provided, otherwise use body
-      const effectiveIdempotencyKey = idempotencyKey || body.idempotencyKey;
-
-      // Convert API DTO to Domain DTO
+      // Domain DTO is same as API DTO now (Adyen format)
       const domainDto: ICreatePaymentDTO = {
-        merchantReference: body.merchantReference,
-        idempotencyKey: effectiveIdempotencyKey,
+        reference: body.reference,
         amount: body.amount,
-        currency: body.currency,
-        paymentMethodType: body.paymentMethodType,
+        paymentMethod: body.paymentMethod,
+        returnUrl: body.returnUrl,
+        merchantAccount: body.merchantAccount,
         shopperEmail: body.shopperEmail,
         shopperReference: body.shopperReference,
         countryCode: body.countryCode,
-        paymentMethod: body.paymentMethod,
       };
 
-      // Call use case
+      // Call use case with idempotency key
       const result = await this.createPaymentUseCase.execute(domainDto);
 
       // Return as API response DTO

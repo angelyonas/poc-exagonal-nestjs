@@ -11,7 +11,22 @@ import { Type } from 'class-transformer';
 import type {
   ICreatePaymentDTO,
   IPaymentMethodDataDTO,
+  IAmountDTO,
 } from '../../domain/contracts/dtos/create-payment.dto';
+
+/**
+ * Amount DTO (API Layer)
+ */
+export class AmountDto implements IAmountDTO {
+  @IsString()
+  @IsNotEmpty()
+  currency: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Type(() => Number)
+  value: number;
+}
 
 /**
  * Payment Method Data DTO (API Layer)
@@ -48,24 +63,27 @@ export class PaymentMethodDataDto implements IPaymentMethodDataDTO {
 export class CreatePaymentDto implements ICreatePaymentDTO {
   @IsString()
   @IsNotEmpty()
-  merchantReference: string;
+  reference: string;
+
+  @ValidateNested()
+  @Type(() => AmountDto)
+  @IsObject()
+  @IsNotEmpty()
+  amount: AmountDto;
+
+  @ValidateNested()
+  @Type(() => PaymentMethodDataDto)
+  @IsObject()
+  @IsNotEmpty()
+  paymentMethod: PaymentMethodDataDto;
 
   @IsString()
   @IsNotEmpty()
-  idempotencyKey: string;
-
-  @IsNumber()
-  @IsNotEmpty()
-  @Type(() => Number)
-  amount: number;
+  returnUrl: string;
 
   @IsString()
   @IsNotEmpty()
-  currency: string;
-
-  @IsString()
-  @IsNotEmpty()
-  paymentMethodType: string;
+  merchantAccount: string;
 
   @IsOptional()
   @IsEmail()
@@ -78,10 +96,4 @@ export class CreatePaymentDto implements ICreatePaymentDTO {
   @IsOptional()
   @IsString()
   countryCode?: string;
-
-  @ValidateNested()
-  @Type(() => PaymentMethodDataDto)
-  @IsObject()
-  @IsNotEmpty()
-  paymentMethod: PaymentMethodDataDto;
 }

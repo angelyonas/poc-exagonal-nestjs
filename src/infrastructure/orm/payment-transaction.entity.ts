@@ -24,7 +24,7 @@ export class PaymentTransactionEntity {
   @Column({ name: 'merchant_reference', type: 'varchar', length: 100 })
   merchantReference: string;
 
-  @Column({ name: 'idempotency_key', type: 'uuid' })
+  @Column({ name: 'idempotency_key', type: 'varchar', length: 100 })
   idempotencyKey: string;
 
   @Column({

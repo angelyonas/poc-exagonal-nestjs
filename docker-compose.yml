@@ -36,7 +36,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - auth-network
+      - payments-network
 
   # Adminer - Database Management UI
   adminer:
@@ -54,6 +54,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:

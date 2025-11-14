@@ -23,7 +23,8 @@ export class CreatePaymentTransactions1731606542433
           },
           {
             name: 'idempotency_key',
-            type: 'uuid',
+            type: 'varchar',
+            length: '100',
             isNullable: false,
           },
           {
