@@ -12,14 +12,17 @@ import {
 } from '@nestjs/common';
 import type { IGetPaymentMethodsUseCase } from '../../domain/contracts/get-payment-methods-use-case.interface';
 import type { ICreatePaymentUseCase } from '../../domain/contracts/create-payment-use-case.interface';
+import type { IProcessPaymentDetailsUseCase } from '../../domain/contracts/process-payment-details-use-case.interface';
 import type { IGetPaymentMethodsDTO } from '../../domain/contracts/dtos/get-payment-methods.dto';
 import type { ICreatePaymentDTO } from '../../domain/contracts/dtos/create-payment.dto';
+import type { IPaymentDetailsDTO } from '../../domain/contracts/dtos/payment-details.dto';
 import {
   PAYMENT_METHOD_TOKENS,
   PAYMENT_TRANSACTION_TOKENS,
 } from '../../application/config/tokens';
 import { GetPaymentMethodsDto } from '../dto/get-payment-methods.dto';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
+import { PaymentDetailsDto } from '../dto/payment-details.dto';
 import { PaymentMethodResponseDto } from '../dto/payment-method-response.dto';
 import { PaymentResponseDto } from '../dto/payment-response.dto';
 import { PaymentMethodNotFoundError } from '../../domain/errors/payment-method-not-found.error';
@@ -35,6 +38,7 @@ import { InvalidPaymentDataError } from '../../domain/errors/invalid-payment-dat
  * Endpoints:
  * - GET /payment-methods - Retrieve available payment methods
  * - POST /payments - Create payment transaction
+ * - POST /payments/details - Submit payment additional details
  */
 @Controller()
 export class PaymentController {
@@ -43,6 +47,8 @@ export class PaymentController {
     private readonly getPaymentMethodsUseCase: IGetPaymentMethodsUseCase,
     @Inject(PAYMENT_TRANSACTION_TOKENS.CREATE_PAYMENT_USE_CASE)
     private readonly createPaymentUseCase: ICreatePaymentUseCase,
+    @Inject(PAYMENT_TRANSACTION_TOKENS.PROCESS_PAYMENT_DETAILS_USE_CASE)
+    private readonly processPaymentDetailsUseCase: IProcessPaymentDetailsUseCase,
   ) {}
 
   /**
@@ -155,6 +161,56 @@ export class PaymentController {
       }
       if (error instanceof DuplicatePaymentError) {
         throw new HttpException(error.message, HttpStatus.CONFLICT);
+      }
+      if (error instanceof PaymentProcessingError) {
+        throw new HttpException(
+          error.message,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+      // Re-throw unknown errors
+      throw error;
+    }
+  }
+
+  /**
+   * POST /payments/details
+   * Submit additional payment details to complete a payment transaction
+   * Used for redirect flows and 3DS authentication completions
+   *
+   * @param body - Payment details data
+   * @returns Payment response with final state
+   * @throws HttpException 400 - Invalid payment details
+   * @throws HttpException 404 - Payment transaction not found
+   * @throws HttpException 500 - Payment processing error
+   *
+   * @example
+   * POST /payments/details
+   * Body: { redirectResult: "Ab02b4c0!..." }
+   */
+  @Post('payments/details')
+  @HttpCode(HttpStatus.OK)
+  async submitPaymentDetails(
+    @Body() body: PaymentDetailsDto,
+  ): Promise<PaymentResponseDto> {
+    try {
+      // Convert API DTO to Domain DTO
+      const domainDto: IPaymentDetailsDTO = {
+        redirectResult: body.redirectResult,
+        threeDSResult: body.threeDSResult,
+        md: body.md,
+        paRes: body.paRes,
+      };
+
+      // Call use case
+      const result = await this.processPaymentDetailsUseCase.execute(domainDto);
+
+      // Return as API response DTO
+      return result as PaymentResponseDto;
+    } catch (error) {
+      // Convert domain errors to HTTP exceptions
+      if (error instanceof ValidationError) {
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
       }
       if (error instanceof PaymentProcessingError) {
         throw new HttpException(

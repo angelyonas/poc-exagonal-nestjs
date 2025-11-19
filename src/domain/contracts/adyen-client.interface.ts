@@ -28,6 +28,18 @@ export interface IAdyenClient {
    * @throws PaymentProcessingError if API call fails
    */
   createPayment(request: IAdyenPaymentRequest): Promise<IAdyenPaymentResponse>;
+
+  /**
+   * Submit payment details to complete a payment transaction
+   * Used for redirect flows and 3DS authentication completions
+   *
+   * @param request - Payment details request data
+   * @returns Adyen payment response
+   * @throws PaymentProcessingError if API call fails
+   */
+  submitPaymentDetails(
+    request: IAdyenPaymentDetailsRequest,
+  ): Promise<IAdyenPaymentResponse>;
 }
 
 /**
@@ -135,4 +147,22 @@ export interface IAdyenPaymentResponse {
 
   /** Optional refusal reason code */
   refusalReasonCode?: string;
+}
+
+/**
+ * Adyen Payment Details Request
+ * Request structure for /payments/details endpoint
+ */
+export interface IAdyenPaymentDetailsRequest {
+  /** Result from redirect flow */
+  redirectResult?: string;
+
+  /** Result from 3D Secure authentication */
+  threeDSResult?: string;
+
+  /** MD parameter from classic 3DS flow */
+  md?: string;
+
+  /** PaRes parameter from classic 3DS flow */
+  paRes?: string;
 }

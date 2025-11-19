@@ -7,6 +7,7 @@ import { NestConfigEnvironmentService } from './services/nest-config-environment
 import { GetHealthUseCase } from '../application/use-cases/get-health.use-case';
 import { GetPaymentMethodsUseCase } from '../application/use-cases/get-payment-methods.use-case';
 import { CreatePaymentUseCase } from '../application/use-cases/create-payment.use-case';
+import { ProcessPaymentDetailsUseCase } from '../application/use-cases/process-payment-details.use-case';
 import { AdyenClientService } from './external-services/adyen-client.service';
 import { AdyenPaymentMethodRepository } from './repositories/adyen-payment-method.repository';
 import { TypeOrmPaymentTransactionRepository } from './repositories/typeorm-payment-transaction.repository';
@@ -82,6 +83,10 @@ import { PaymentTransactionEntity } from './orm/payment-transaction.entity';
     {
       provide: PAYMENT_TRANSACTION_TOKENS.CREATE_PAYMENT_USE_CASE,
       useClass: CreatePaymentUseCase,
+    },
+    {
+      provide: PAYMENT_TRANSACTION_TOKENS.PROCESS_PAYMENT_DETAILS_USE_CASE,
+      useClass: ProcessPaymentDetailsUseCase,
     },
   ],
 })

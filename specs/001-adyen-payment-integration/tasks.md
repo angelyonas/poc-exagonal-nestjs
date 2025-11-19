@@ -214,9 +214,9 @@ Single NestJS microservice at repository root:
 
 ### Domain Layer - US3
 
-- [ ] T086 [P] [US3] Create PaymentDetails entity in `src/domain/entities/payment-details.ts` with static factory methods (createFromRedirect, createFrom3DS)
-- [ ] T087 [P] [US3] Create IPaymentDetailsDTO in `src/domain/contracts/dtos/payment-details.dto.ts`
-- [ ] T088 [P] [US3] Create IProcessPaymentDetailsUseCase interface in `src/domain/contracts/process-payment-details-use-case.interface.ts`
+- [x] T086 [P] [US3] Create PaymentDetails entity in `src/domain/entities/payment-details.ts` with static factory methods (createFromRedirect, createFrom3DS)
+- [x] T087 [P] [US3] Create IPaymentDetailsDTO in `src/domain/contracts/dtos/payment-details.dto.ts`
+- [x] T088 [P] [US3] Create IProcessPaymentDetailsUseCase interface in `src/domain/contracts/process-payment-details-use-case.interface.ts`
 
 ### Domain Tests - US3
 
@@ -224,8 +224,8 @@ Single NestJS microservice at repository root:
 
 ### Application Layer - US3
 
-- [ ] T090 [US3] Create ProcessPaymentDetailsUseCase with @Injectable in `src/application/use-cases/process-payment-details.use-case.ts` implementing IUseCase<IPaymentDetailsDTO, IPaymentResponseDTO>
-- [ ] T091 [US3] Add PROCESS_PAYMENT_DETAILS_TOKENS to `src/application/config/tokens.ts`
+- [x] T090 [US3] Create ProcessPaymentDetailsUseCase with @Injectable in `src/application/use-cases/process-payment-details.use-case.ts` implementing IUseCase<IPaymentDetailsDTO, IPaymentResponseDTO>
+- [x] T091 [US3] Add PROCESS_PAYMENT_DETAILS_TOKENS to `src/application/config/tokens.ts`
 
 ### Application Tests - US3
 
@@ -233,10 +233,10 @@ Single NestJS microservice at repository root:
 
 ### Infrastructure Layer - US3
 
-- [ ] T093 [US3] Add submitPaymentDetails method to AdyenClientService in `src/infrastructure/external-services/adyen-client.service.ts` (call /payments/details endpoint)
-- [ ] T094 [P] [US3] Create PaymentDetailsDto (API DTO) in `src/infrastructure/dto/payment-details.dto.ts` with class-validator decorators
-- [ ] T095 [US3] Add POST /payments/details endpoint to PaymentController in `src/infrastructure/controllers/payment.controller.ts`
-- [ ] T096 [US3] Update AppModule with US3 providers in `src/infrastructure/app.module.ts`
+- [x] T093 [US3] Add submitPaymentDetails method to AdyenClientService in `src/infrastructure/external-services/adyen-client.service.ts` (call /payments/details endpoint)
+- [x] T094 [P] [US3] Create PaymentDetailsDto (API DTO) in `src/infrastructure/dto/payment-details.dto.ts` with class-validator decorators
+- [x] T095 [US3] Add POST /payments/details endpoint to PaymentController in `src/infrastructure/controllers/payment.controller.ts`
+- [x] T096 [US3] Update AppModule with US3 providers in `src/infrastructure/app.module.ts`
 
 ### Infrastructure Tests - US3
 

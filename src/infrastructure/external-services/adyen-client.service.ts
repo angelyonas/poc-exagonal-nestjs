@@ -6,6 +6,7 @@ import type {
   IAdyenPaymentMethodsResponse,
   IAdyenPaymentRequest,
   IAdyenPaymentResponse,
+  IAdyenPaymentDetailsRequest,
 } from '../../domain/contracts/adyen-client.interface';
 import type { ILogger } from '../../domain/contracts/logger.interface';
 import type { IEnvironmentService } from '../../domain/contracts/environment-service.interface';
@@ -193,6 +194,95 @@ export class AdyenClientService implements IAdyenClient {
       );
 
       throw new PaymentProcessingError('Failed to create payment with Adyen');
+    }
+  }
+
+  /**
+   * Submit payment details to complete a payment transaction
+   * Used for redirect flows and 3DS authentication completions
+   *
+   * @param request - Payment details request
+   * @returns Adyen payment response
+   * @throws PaymentProcessingError if API call fails
+   */
+  async submitPaymentDetails(
+    request: IAdyenPaymentDetailsRequest,
+  ): Promise<IAdyenPaymentResponse> {
+    this.logger.info('Calling Adyen /payments/details endpoint', {
+      hasRedirectResult: !!request.redirectResult,
+      hasThreeDSResult: !!request.threeDSResult,
+      hasClassic3DS: !!(request.md && request.paRes),
+    });
+
+    try {
+      // Prepare details object based on available fields
+      const details: Record<string, string> = {};
+
+      if (request.redirectResult) {
+        details.redirectResult = request.redirectResult;
+      }
+      if (request.threeDSResult) {
+        details.threeDSResult = request.threeDSResult;
+      }
+      if (request.md) {
+        details.MD = request.md;
+      }
+      if (request.paRes) {
+        details.PaRes = request.paRes;
+      }
+
+      // Call Adyen API using official library
+      const response = await this.checkout.PaymentsApi.paymentsDetails({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        details: details as any,
+      });
+
+      this.logger.info('Adyen /payments/details response received', {
+        pspReference: response.pspReference,
+        resultCode: response.resultCode,
+      });
+
+      // Map Adyen library response to our interface
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const action = response.action as any;
+
+      return {
+        pspReference: response.pspReference,
+        resultCode: response.resultCode || 'Unknown',
+        action: action
+          ? {
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              type: action.type || '',
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              paymentMethodType: action.paymentMethodType,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              url: action.url,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              method: action.method,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              data: action.data,
+            }
+          : undefined,
+        refusalReason: response.refusalReason,
+        refusalReasonCode: response.refusalReasonCode,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      this.logger.error(
+        'Adyen /payments/details call failed',
+        error instanceof Error ? error : undefined,
+        {
+          message: errorMessage,
+          hasRedirectResult: !!request.redirectResult,
+          hasThreeDSResult: !!request.threeDSResult,
+        },
+      );
+
+      throw new PaymentProcessingError(
+        'Failed to submit payment details to Adyen',
+      );
     }
   }
 }
