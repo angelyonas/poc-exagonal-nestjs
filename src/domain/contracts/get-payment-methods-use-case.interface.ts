@@ -11,6 +11,7 @@ import type { IPaymentMethodResponseDTO } from './dtos/payment-method-response.d
  * - Convert PaymentMethod entities to DTOs
  * - Return payment methods to controller
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface IGetPaymentMethodsUseCase
-  extends IUseCase<IGetPaymentMethodsDTO, IPaymentMethodResponseDTO[]> {}
+export type IGetPaymentMethodsUseCase = IUseCase<
+  IGetPaymentMethodsDTO,
+  IPaymentMethodResponseDTO[]
+>;
