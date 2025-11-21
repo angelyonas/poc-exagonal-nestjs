@@ -4,4 +4,11 @@ export interface IEnvironmentService {
   isDevelopment(): boolean;
   isProduction(): boolean;
   isTest(): boolean;
+
+  // Adyen Configuration
+  getAdyenApiKey(): string;
+  getAdyenMerchantAccount(): string;
+  getAdyenEnvironment(): string;
+  getAdyenApiVersion(): string;
+  getAdyenTimeoutMs(): number;
 }

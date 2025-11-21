@@ -1,24 +1,24 @@
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
-    container_name: auth-postgres
+    image: postgres:14
+    container_name: payments-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_DATABASE:-auth_db}
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${DATABASE_NAME:-payments_db}
     ports:
-      - '${DB_PORT:-5432}:5432'
+      - '${DATABASE_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USER:-postgres}']
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - auth-network
+      - payments-network
 
   # Redis Cache (for brute force protection and session management)
   redis:
@@ -36,35 +36,21 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - auth-network
+      - payments-network
 
   # Adminer - Database Management UI
   adminer:
     image: adminer:latest
-    container_name: auth-adminer
+    container_name: payments-adminer
     restart: unless-stopped
     ports:
       - '8080:8080'
     environment:
       ADMINER_DEFAULT_SERVER: postgres
     networks:
-      - auth-network
+      - payments-network
     depends_on:
       - postgres
-
-  # Redis Commander - Redis Management UI
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: auth-redis-commander
-    restart: unless-stopped
-    ports:
-      - '8081:8081'
-    environment:
-      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD:-redis_password}
-    networks:
-      - auth-network
-    depends_on:
-      - redis
 
 volumes:
   postgres_data:
@@ -73,5 +59,5 @@ volumes:
     driver: local
 
 networks:
-  auth-network:
+  payments-network:
     driver: bridge

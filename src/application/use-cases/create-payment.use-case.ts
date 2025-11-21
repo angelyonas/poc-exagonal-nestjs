@@ -1,0 +1,263 @@
+import { Inject, Injectable } from '@nestjs/common';
+import type { ICreatePaymentUseCase } from '../../domain/contracts/create-payment-use-case.interface';
+import type { ICreatePaymentDTO } from '../../domain/contracts/dtos/create-payment.dto';
+import type { IPaymentResponseDTO } from '../../domain/contracts/dtos/payment-response.dto';
+import type { IAdyenClient } from '../../domain/contracts/adyen-client.interface';
+import type { IPaymentTransactionRepository } from '../../domain/contracts/payment-transaction-repository.interface';
+import type { ICache } from '../../domain/contracts/cache.interface';
+import type { ILogger } from '../../domain/contracts/logger.interface';
+import { PaymentTransaction } from '../../domain/entities/payment-transaction';
+import { DuplicatePaymentError } from '../../domain/errors/duplicate-payment.error';
+import { PaymentProcessingError } from '../../domain/errors/payment-processing.error';
+import {
+  INFRASTRUCTURE_TOKENS,
+  PAYMENT_METHOD_TOKENS,
+  PAYMENT_TRANSACTION_TOKENS,
+} from '../config/tokens';
+
+/**
+ * Create Payment Use Case
+ * Orchestrates payment creation with idempotency and persistence
+ */
+@Injectable()
+export class CreatePaymentUseCase implements ICreatePaymentUseCase {
+  private readonly IDEMPOTENCY_CACHE_PREFIX = 'payment:idempotency:';
+
+  constructor(
+    @Inject(PAYMENT_METHOD_TOKENS.ADYEN_CLIENT)
+    private readonly adyenClient: IAdyenClient,
+    @Inject(PAYMENT_TRANSACTION_TOKENS.PAYMENT_TRANSACTION_REPOSITORY)
+    private readonly transactionRepository: IPaymentTransactionRepository,
+    @Inject(INFRASTRUCTURE_TOKENS.CACHE)
+    private readonly cache: ICache,
+    @Inject(INFRASTRUCTURE_TOKENS.LOGGER)
+    private readonly logger: ILogger,
+  ) {}
+
+  async execute(input: ICreatePaymentDTO): Promise<IPaymentResponseDTO> {
+    this.logger.info('Creating payment', {
+      reference: input.reference,
+      amount: input.amount.value,
+      currency: input.amount.currency,
+    });
+
+    // Check idempotency cache
+    const cachedResponse = await this.checkIdempotencyCache(input.reference);
+    if (cachedResponse) {
+      this.logger.info('Returning cached payment response', {
+        reference: input.reference,
+      });
+      return cachedResponse;
+    }
+
+    // Check for existing transaction with same idempotency key but different data
+    const existingTransaction =
+      await this.transactionRepository.findByIdempotencyKey(input.reference);
+    if (existingTransaction) {
+      // Validate it's the same request
+      if (
+        existingTransaction.merchantReference !== input.reference ||
+        existingTransaction.amountMinorUnits !== input.amount.value ||
+        existingTransaction.currencyCode !== input.amount.currency
+      ) {
+        throw new DuplicatePaymentError(
+          input.reference,
+          'Idempotency key already used with different payment data',
+        );
+      }
+
+      // Return existing result if already processed
+      if (existingTransaction.isFinalState()) {
+        const response = this.entityToDTO(existingTransaction);
+        await this.cacheResponse(input.reference, response);
+        return response;
+      }
+    }
+
+    // Create pending transaction (persist BEFORE calling Adyen)
+    const pendingTransaction = PaymentTransaction.create(
+      input.reference,
+      input.reference,
+      input.amount.value,
+      input.amount.currency,
+      input.paymentMethod.type,
+      input.shopperEmail,
+      input.shopperReference,
+      input.countryCode,
+    );
+
+    const savedTransaction =
+      await this.transactionRepository.save(pendingTransaction);
+    this.logger.info('Persisted pending transaction', {
+      merchantReference: input.reference,
+      transactionId: savedTransaction.id,
+    });
+
+    try {
+      // Call Adyen API
+      const adyenResponse = await this.adyenClient.createPayment({
+        merchantAccount: input.merchantAccount,
+        amount: {
+          value: input.amount.value,
+          currency: input.amount.currency,
+        },
+        reference: input.reference,
+        paymentMethod: input.paymentMethod,
+        returnUrl: input.returnUrl,
+        shopperEmail: input.shopperEmail,
+        shopperReference: input.shopperReference,
+        countryCode: input.countryCode,
+        channel: 'web',
+      });
+
+      // Update transaction with Adyen response
+      const updatedTransaction = this.updateTransactionWithResponse(
+        savedTransaction,
+        adyenResponse,
+      );
+      await this.transactionRepository.update(updatedTransaction);
+
+      this.logger.info('Updated transaction with Adyen response', {
+        reference: input.reference,
+        resultCode: adyenResponse.resultCode,
+        pspReference: adyenResponse.pspReference,
+      });
+
+      // Convert to DTO
+      const response = this.entityToDTO(updatedTransaction);
+
+      // Cache response
+      await this.cacheResponse(input.reference, response);
+
+      return response;
+    } catch (error) {
+      // Update existing pending transaction with error state
+      const errorTransaction = savedTransaction.withError(
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+
+      // Update the same transaction (don't save again - unique constraint on merchantReference)
+      await this.transactionRepository.update(errorTransaction);
+
+      this.logger.error(
+        'Payment processing failed',
+        error instanceof Error ? error : new Error('Unknown error'),
+      );
+
+      throw new PaymentProcessingError(
+        `Failed to process payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
+   * Check idempotency cache for existing response
+   */
+  private async checkIdempotencyCache(
+    idempotencyKey: string,
+  ): Promise<IPaymentResponseDTO | null> {
+    const cacheKey = `${this.IDEMPOTENCY_CACHE_PREFIX}${idempotencyKey}`;
+    return await this.cache.get<IPaymentResponseDTO>(cacheKey);
+  }
+
+  /**
+   * Cache payment response for idempotency
+   */
+  private async cacheResponse(
+    idempotencyKey: string,
+    response: IPaymentResponseDTO,
+  ): Promise<void> {
+    const cacheKey = `${this.IDEMPOTENCY_CACHE_PREFIX}${idempotencyKey}`;
+    const ttl = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    await this.cache.set(cacheKey, response, ttl);
+  }
+
+  /**
+   * Update transaction entity with Adyen response
+   */
+  private updateTransactionWithResponse(
+    transaction: PaymentTransaction,
+    response: {
+      pspReference?: string;
+      resultCode: string;
+      action?: {
+        type: string;
+        paymentMethodType?: string;
+        url?: string;
+        method?: string;
+        data?: Record<string, unknown>;
+      };
+      refusalReason?: string;
+    },
+  ): PaymentTransaction {
+    const pspReference = response.pspReference || '';
+
+    // Handle different result codes
+    switch (response.resultCode) {
+      case 'Authorised':
+        return transaction.withAuthorised(pspReference, response.resultCode);
+
+      case 'Refused':
+      case 'Cancelled':
+      case 'Error':
+        return transaction.withRefused(pspReference, response.resultCode);
+
+      case 'RedirectShopper':
+      case 'IdentifyShopper':
+      case 'ChallengeShopper':
+      case 'PresentToShopper':
+        if (response.action) {
+          return transaction.withRedirect(
+            pspReference,
+            response.resultCode,
+            response.action.type,
+            response.action.url || '',
+            response.action.method || 'GET',
+            response.action.data,
+          );
+        }
+        return transaction.withError(
+          'Action required but no action data provided',
+        );
+
+      case 'Pending':
+      case 'Received':
+        // Keep as pending
+        return transaction;
+
+      default:
+        return transaction.withError(
+          `Unknown result code: ${response.resultCode}`,
+        );
+    }
+  }
+
+  /**
+   * Convert transaction entity to DTO
+   */
+  private entityToDTO(transaction: PaymentTransaction): IPaymentResponseDTO {
+    const response: IPaymentResponseDTO = {
+      merchantReference: transaction.merchantReference,
+      state: transaction.state,
+      amount: transaction.amountMinorUnits,
+      currency: transaction.currencyCode,
+      resultCode: transaction.resultCode || undefined,
+      pspReference: transaction.pspReference || undefined,
+      refusalReason: transaction.errorMessage || undefined,
+      errorMessage: transaction.errorMessage || undefined,
+    };
+
+    // Add action if present
+    if (transaction.requiresRedirect() && transaction.actionType) {
+      response.action = {
+        type: transaction.actionType,
+        paymentMethodType: transaction.paymentMethodType,
+        url: transaction.actionUrl || undefined,
+        method: transaction.actionMethod || undefined,
+        data: transaction.actionData || undefined,
+      };
+    }
+
+    return response;
+  }
+}
