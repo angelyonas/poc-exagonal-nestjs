@@ -12,6 +12,11 @@ import type { ILogger } from '../../domain/contracts/logger.interface';
 import type { IEnvironmentService } from '../../domain/contracts/environment-service.interface';
 import { INFRASTRUCTURE_TOKENS } from '../../application/config/tokens';
 import { PaymentProcessingError } from '../../domain/errors/payment-processing.error';
+import type {
+  IAdyenLibraryPaymentMethodsResponse,
+  IAdyenLibraryPaymentResponse,
+  IAdyenLibraryPaymentDetails,
+} from './adyen-library-types';
 
 /**
  * Adyen Client Service
@@ -74,13 +79,14 @@ export class AdyenClientService implements IAdyenClient {
 
     try {
       // Call Adyen API using official library
+      // Type assertion needed for Adyen library ChannelEnum compatibility
+      type AdyenChannel = 'Web' | 'iOS' | 'Android';
       const response = await this.checkout.PaymentsApi.paymentMethods({
         merchantAccount: request.merchantAccount,
         countryCode: request.countryCode,
         amount: request.amount,
         shopperLocale: request.shopperLocale,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        channel: request.channel as any, // Adyen library type compatibility
+        channel: request.channel as AdyenChannel as never,
       });
 
       this.logger.info('Adyen /paymentMethods response received', {
@@ -88,8 +94,9 @@ export class AdyenClientService implements IAdyenClient {
       });
 
       // Map Adyen library response to our interface
+      const typedResponse = response as IAdyenLibraryPaymentMethodsResponse;
       return {
-        paymentMethods: (response.paymentMethods || []).map((pm) => ({
+        paymentMethods: (typedResponse.paymentMethods || []).map((pm) => ({
           type: pm.type || '',
           name: pm.name || '',
           brands: pm.brands,
@@ -135,18 +142,18 @@ export class AdyenClientService implements IAdyenClient {
 
     try {
       // Call Adyen API using official library
+      // Type assertion needed for Adyen library ChannelEnum compatibility
+      type AdyenChannel = 'Web' | 'iOS' | 'Android';
       const response = await this.checkout.PaymentsApi.payments({
         merchantAccount: request.merchantAccount,
         amount: request.amount,
         reference: request.reference,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        paymentMethod: request.paymentMethod as any,
+        paymentMethod: request.paymentMethod as Record<string, unknown>,
         returnUrl: request.returnUrl,
         shopperEmail: request.shopperEmail,
         shopperReference: request.shopperReference,
         countryCode: request.countryCode,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        channel: request.channel as any, // Adyen library type compatibility
+        channel: request.channel as AdyenChannel as never,
       });
 
       this.logger.info('Adyen /payments response received', {
@@ -156,28 +163,23 @@ export class AdyenClientService implements IAdyenClient {
       });
 
       // Map Adyen library response to our interface
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const action = response.action as any;
+      const typedResponse = response as IAdyenLibraryPaymentResponse;
+      const action = typedResponse.action;
 
       return {
-        pspReference: response.pspReference,
-        resultCode: response.resultCode || 'Unknown',
+        pspReference: typedResponse.pspReference,
+        resultCode: typedResponse.resultCode || 'Unknown',
         action: action
           ? {
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               type: action.type || '',
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               paymentMethodType: action.paymentMethodType,
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               url: action.url,
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               method: action.method,
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               data: action.data,
             }
           : undefined,
-        refusalReason: response.refusalReason,
-        refusalReasonCode: response.refusalReasonCode,
+        refusalReason: typedResponse.refusalReason,
+        refusalReasonCode: typedResponse.refusalReasonCode,
       };
     } catch (error) {
       const errorMessage =
@@ -216,7 +218,7 @@ export class AdyenClientService implements IAdyenClient {
 
     try {
       // Prepare details object based on available fields
-      const details: Record<string, string> = {};
+      const details: IAdyenLibraryPaymentDetails = {};
 
       if (request.redirectResult) {
         details.redirectResult = request.redirectResult;
@@ -233,8 +235,7 @@ export class AdyenClientService implements IAdyenClient {
 
       // Call Adyen API using official library
       const response = await this.checkout.PaymentsApi.paymentsDetails({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        details: details as any,
+        details: details as Record<string, unknown>,
       });
 
       this.logger.info('Adyen /payments/details response received', {
@@ -243,28 +244,23 @@ export class AdyenClientService implements IAdyenClient {
       });
 
       // Map Adyen library response to our interface
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const action = response.action as any;
+      const typedResponse = response as IAdyenLibraryPaymentResponse;
+      const action = typedResponse.action;
 
       return {
-        pspReference: response.pspReference,
-        resultCode: response.resultCode || 'Unknown',
+        pspReference: typedResponse.pspReference,
+        resultCode: typedResponse.resultCode || 'Unknown',
         action: action
           ? {
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               type: action.type || '',
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               paymentMethodType: action.paymentMethodType,
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               url: action.url,
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               method: action.method,
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
               data: action.data,
             }
           : undefined,
-        refusalReason: response.refusalReason,
-        refusalReasonCode: response.refusalReasonCode,
+        refusalReason: typedResponse.refusalReason,
+        refusalReasonCode: typedResponse.refusalReasonCode,
       };
     } catch (error) {
       const errorMessage =
